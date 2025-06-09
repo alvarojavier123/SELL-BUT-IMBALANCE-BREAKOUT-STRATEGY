@@ -4,3 +4,8 @@ The strategy logic is coded in the file STRATEGY.py, in this file I backtested t
 
 These are the returns from the file MINUTE_BACKTEST IN-SAMPLE.py with the parameters : 180 LOOKBACK, 480 HOLDING PERIOD, 10% TAKE PROFIT, 1% STOP LOSS (IN - SAMPLE PERFORMANCE 2020-2024) 86 % COMPOUNDED RETURN, -21 DRAWDOWN, 0.65 SHARPE RATIO:
 ![returns 180 lkbk, 480 hrs, 1% sl, 10% tp](https://github.com/user-attachments/assets/0763fc52-d4f8-4e21-b581-03f8cd9451f5)
+
+These are the returns from the file MINUTE_BACKTEST OUT -SAMPLE.py with the parameters : 180 LOOKBACK, 480 HOLDING PERIOD, 10% TAKE PROFIT, 1% STOP LOSS (OUT - SAMPLE PERFORMANCE 2024-2025) -1% % COMPOUNDED RETURN, -28 DRAWDOWN, 0.07 SHARPE RATIO:
+![out sample](https://github.com/user-attachments/assets/4053bfbf-cd78-4727-b47d-6b6f01aef1da)
+
+
