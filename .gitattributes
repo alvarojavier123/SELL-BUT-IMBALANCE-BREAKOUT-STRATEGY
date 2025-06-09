@@ -1,2 +1,1 @@
 *.csv filter=lfs diff=lfs merge=lfs -text
-BTC_USDT_1min_since_2020.csv filter=lfs diff=lfs merge=lfs -text
