@@ -12,7 +12,8 @@ os.makedirs("minute_backtest_outputs", exist_ok=True)
 data = pd.read_csv('aggTrades_aggregated_1h.csv')
 data.index = pd.to_datetime(data['timestamp'])
 data = data.drop('timestamp', axis=1)
-data = data.loc[data.index > '2024-01-01']  # OUT-OF-SAMPLE
+data = data.loc[data.index < '2024-01-01']  # IN-SAMPLE
+
 
 mean_diff = data['volume_diff'].mean()
 std_diff = data['volume_diff'].std()
@@ -51,8 +52,8 @@ min_df = min_df.drop('timestamp', axis=1)
 # Shift signals by 59 minutes to align with close of hour
 shifted_signals = df.copy()
 shifted_signals.index = shifted_signals.index + pd.Timedelta(minutes=59)
-min_df['signal'] = shifted_signals['signal'].reindex(min_df.index)
-min_df = min_df.loc[min_df.index > '2024-01-01']  # OUT-SAMPLE
+min_df['signal'] = shifted_signals['signal'].reindex(min_df.index).fillna(0)
+min_df = min_df.loc[min_df.index < '2024-01-01']  # IN-SAMPLE
 
 
 # Prepare columns for PnL and trade info
@@ -63,7 +64,9 @@ min_df['exit_time'] = pd.NaT
 
 holding_period = holding_period * 60  # 120 HOURS * 60 MINUTES = 7200
 stop_loss_pct = 0.01
-take_profit_pct = 0.1
+take_profit_pct = 0.2
+trailing_stop_pct = 0.05  
+
 trading_cost = 0.001
 
 prices = min_df['close'].values
@@ -76,40 +79,88 @@ trades = []
 print("\nStarting backtest with progress bar...\n")
 
 for i in tqdm(range(len(min_df) - holding_period), desc="Backtesting Progress"):
+    print(i)
     if i <= last_exit:
-        continue  # skip if still in a trade
+        continue
 
-    if signals[i] == 0 or np.isnan(signals[i]):
-        continue  # no signal here
-
+    if signals[i] == 0:
+        continue
+    
     direction = signals[i]
+    print("Direction = ", direction)
+    entry_idx = i
 
     entry_price = prices[i]
+    print("Entry Price = ", entry_price)
     max_slippage = 0.001
     entry_price *= (1 + direction * max_slippage)
 
+    print("Entry Price After Slippage = ", entry_price)
+
     max_exit_idx = i + holding_period
+    print("Max Exit Idx = ", max_exit_idx)
     trade_slice = prices[i+1:max_exit_idx+1]
+    print("Trade Slice = ", trade_slice)
     returns = (trade_slice - entry_price) / entry_price * direction
+    print("Returns = ", returns)
 
-    tp_hits = np.where(returns >= take_profit_pct)[0]
-    sl_hits = np.where(returns <= -stop_loss_pct)[0]
+    best_price = entry_price
+    print("Best Price = ", best_price)
+    exit_idx = max_exit_idx
+    print("Exit Idx = ", exit_idx)
+    reason = 'Hold'
+    print("Reason = ", reason)
 
-    if len(tp_hits) > 0 and (len(sl_hits) == 0 or tp_hits[0] < sl_hits[0]):
-        exit_idx = i + 1 + tp_hits[0]
-        reason = 'TP'
-        exit_price = entry_price * (1 + direction * take_profit_pct)
-    
-    elif len(sl_hits) > 0:
-        exit_idx = i + 1 + sl_hits[0]
-        reason = 'SL'
-        exit_price = entry_price * (1 - direction * stop_loss_pct)
+    for j in range(i + 1, max_exit_idx + 1):
+        print("Trade Slice = ", trade_slice)
+        print("Returns = ", returns)
+        price = prices[j]
+        print("Price = ", price)
+        move = (price - entry_price) / entry_price * direction
+        print("Move = ", move)
 
-    else:
-        exit_idx = max_exit_idx
-        reason = 'Hold'
-        exit_price = prices[exit_idx]
-    
+        if move >= take_profit_pct:
+            exit_idx = j
+            print("Exit Idx = ", exit_idx)
+            reason = 'TP'
+            print("Reason = ", reason)
+            break
+
+        if direction == 1:
+            if price > best_price:
+                best_price = price
+                print("Best Price = ", best_price)
+        else:
+            if price < best_price:
+                best_price = price
+                print("Best Price = ", best_price)
+
+        trailing_level = best_price * (1 - trailing_stop_pct) if direction == 1 else best_price * (1 + trailing_stop_pct)
+        print("TRAILING LEVEL = ", trailing_level)
+
+        if (direction == 1 and price < trailing_level) or (direction == -1 and price > trailing_level):
+            exit_idx = j
+            print("Exit Idx = ", exit_idx)
+            reason = 'Trailing Stop'
+            print("Reason = ", reason)
+            break
+
+        if move <= -stop_loss_pct:
+            exit_idx = j
+            print("Exit Idx = ", exit_idx)
+            reason = 'SL'
+            print("Reason = ", reason)
+            break
+        
+        """
+        res = input("Continue ? ")
+        if res == "":
+            print("------------------------------------------------")
+            continue
+        """
+
+
+    exit_price = prices[exit_idx]
     gross_ret = direction * (exit_price - entry_price) / entry_price
     ret = gross_ret - 2 * trading_cost  # fees applied on entry and exit
 

@@ -21,7 +21,7 @@ volume_threshold = mean_diff + 3 * std_diff
 
 lookback = 180
 holding_period = 480
-stop_loss_pct = 0.01
+stop_loss_pct = 0.005
 take_profit_pct = 0.1
 trading_cost = 0.001
 
@@ -62,9 +62,11 @@ min_df['exit_reason'] = np.nan
 min_df['entry_time'] = pd.NaT
 min_df['exit_time'] = pd.NaT
 
-holding_period = holding_period * 60  # 120 HOURS * 60 MINUTES = 7200
-stop_loss_pct = 0.01
-take_profit_pct = 0.1
+lookback = 480
+holding_period = 480
+holding_period = holding_period * 60 
+stop_loss_pct = 0.005
+take_profit_pct = 0.2
 trading_cost = 0.001
 
 prices = min_df['close'].values
